@@ -1,4 +1,4 @@
-##🚌 BusGrid: RedBus Data Scraper & Interactive Bus Explorer
+🚌 BusGrid: RedBus Data Scraper & Interactive Bus Explorer
 
 A Python project that scrapes bus route data from RedBus for multiple state transport corporations in India using Selenium, stores it in a MySQL database, and displays it in an interactive Streamlit web app with dynamic filtering options.
 
