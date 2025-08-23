@@ -1,9 +1,10 @@
 """
 Redbus Data Scraping with Selenium & Dynamic Filtering using Streamlit
 
-This module scrapes bus route data from RedBus for various state transport
-corporations in India using Selenium, stores the data in a MySQL database, 
-and displays it in an interactive Streamlit web app with filtering options.
+This module scrapes bus route data from RedBus for various state 
+transport corporations in India using Selenium, stores the data in a
+MySQL database, and displays it in an interactive Streamlit web app 
+with filtering options.
 
 Modules used:
 - time: for delays in scraping
@@ -21,331 +22,337 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import streamlit as st
 import mysql.connector
+from sqlalchemy import create_engine
+
+# Cache the scraped data to avoid re-scraping on every app reload
+@st.cache_data 
+
+# Function to scrape bus data from RedBus
+def scrap_redbus_data():
 
 
-def extraction(x,y,z):
-
-    """
-    Extracts bus details from a route page and 
-    appends them to the DATA dictionary.
-
-    Parameters:
-    x (str): State name.
-    y (str): Route link.
-    z (str): Route name.
-
-    This function scrolls through the bus listings 
-    on the page, collects details such as bus name, type, timing,
-    duration, rating, price, and seat availability
-    and stores them in the global DATA dictionary.
-    """
-    def scroll():
+    def extraction(x,y,z):
 
         """
-        Scrolls through the bus listings page until 
-        the end of the listings is reached
-        or maximum scroll attempts are exceeded.
+        Extracts bus details from a route page and 
+        appends them to the DATA dictionary.
+
+        Parameters:
+        x (str): State name.
+        y (str): Route link.
+        z (str): Route name.
+
+        This function scrolls through the bus listings 
+        on the page, collects details such as bus name, type, timing,
+        duration, rating, price, and seat availability
+        and stores them in the global DATA dictionary.
         """
+        def scroll():
 
-        B = 0
-
-        while True:
-
-            BUSES = driver.find_elements(
-                By.XPATH,"//div[contains(@class,'travelsName___')]"
-            )
-
-            driver.execute_script(
             """
-            arguments[0].scrollIntoView({behavior:'smooth',block:'center'});
-            """,
-            BUSES[-3]
-            )
+            Scrolls through the bus listings page until 
+            the end of the listings is reached
+            or maximum scroll attempts are exceeded.
+            """
 
-            time.sleep(5)
+            B = 0
 
-            try:
+            while True:
 
-                # Check if the end of listings is reached
-                driver.find_element(
-                    By.XPATH, "//span[contains(@class,'end')]"
+                BUSES = driver.find_elements(
+                    By.XPATH,"//div[contains(@class,'travelsName___')]"
                 )
 
-                break
+                driver.execute_script(
+                """
+                arguments[0].scrollIntoView({behavior:'smooth',block:'center'});
+                """,
+                BUSES[-3]
+                )
 
-            except:
+                time.sleep(5)
 
-                pass
+                try:
 
-            B += 1
+                    # Check if the end of listings is reached
+                    driver.find_element(
+                        By.XPATH, "//span[contains(@class,'end')]"
+                    )
 
-            if B > 50:
+                    break
 
-                break
+                except:
 
-    try:
+                    pass
 
-        time.sleep(2)
+                B += 1
 
-        scroll()
+                if B > 50:
 
-        time.sleep(2)
+                    break
 
-        LE = driver.find_elements(
-            By.XPATH,"//div[contains(@class , 'travelsName___')]"
-        )
+        try:
 
-        # Get the total number of buses on the page
-        LE = len(LE)
+            time.sleep(2)
 
-        # Append static data for each bus
-        DATA['state'].extend([x]*(LE))
+            #scroll()
 
-        DATA['route_link'].extend([y]*(LE))
+            #time.sleep(2)
 
-        DATA['route_name'].extend([z]*(LE))
-
-        # Append dynamic data for each bus
-        DATA['busname'].extend([C.text for C in driver.find_elements(
-            By.XPATH,"//div[contains(@class,'travelsName___')]"
-            )])
-
-        DATA['bustype'].extend([C.text for C in driver.find_elements(
-            By.XPATH,"//p[contains(@class,'busType___')]"
-            )])
-
-        DATA['departing_time'].extend([C.text for C in driver.find_elements(
-            By.XPATH,"//p[contains(@class,'boardingTime___')]"
-            )])
-
-        DATA['duration'].extend([C.text for C in driver.find_elements(
-            By.XPATH,"//p[contains(@class,'duration___')]"
-            )])
-
-        DATA['reaching_time'].extend([C.text for C in driver.find_elements(
-            By.XPATH,"//p[contains(@class,'droppingTime___')]"
-            )])
-
-        # Extract ratings
-        MAINC = driver.find_elements(
-            By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
+            LE = driver.find_elements(
+                By.XPATH,"//div[contains(@class , 'travelsName___')]"
             )
 
-        for L in MAINC:
+            # Get the total number of buses on the page
+            LE = len(LE)
 
+            # Append static data for each bus
+            DATA['state'].extend([x]*(LE))
+
+            DATA['route_link'].extend([y]*(LE))
+
+            DATA['route_name'].extend([z]*(LE))
+
+            # Append dynamic data for each bus
+            DATA['busname'].extend([C.text for C in driver.find_elements(
+                By.XPATH,"//div[contains(@class,'travelsName___')]"
+                )])
+
+            DATA['bustype'].extend([C.text for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'busType___')]"
+                )])
+
+            DATA['departing_time'].extend([C.text for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'boardingTime___')]"
+                )])
+
+            DATA['duration'].extend([C.text for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'duration___')]"
+                )])
+
+            DATA['reaching_time'].extend([C.text for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'droppingTime___')]"
+                )])
+
+            # Extract ratings
             MAINC = driver.find_elements(
                 By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
                 )
-            
-            try:
 
-                DATA['star_rating'].append(L.find_element(
-                    By.XPATH, ".//div[contains(@class,'rating___')]"
-                    ).text)
+            for L in MAINC:
+
+                MAINC = driver.find_elements(
+                    By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
+                    )
                 
-            except:
+                try:
 
-                DATA['star_rating'].append('No rating')
+                    DATA['star_rating'].append(L.find_element(
+                        By.XPATH, ".//div[contains(@class,'rating___')]"
+                        ).text)
+                    
+                except:
 
-        # Extract price and seats available
-        DATA['price'].extend(
-            [
-            (C.text).strip('₹')
-            for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'finalFare___')]"
-                )
-            ]
-        )
-        
-        DATA['seats_available'].extend(
-            [
-            C.text.split()[0] 
-            for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'totalSeats___')]"
-                )
-            ]
-        )
-        
-        # Go back to the previous page
-        driver.back()
+                    DATA['star_rating'].append('No rating')
 
-        time.sleep(3)
+            # Extract price and seats available
+            DATA['price'].extend(
+                [
+                (C.text).strip('₹')
+                for C in driver.find_elements(
+                    By.XPATH,"//p[contains(@class,'finalFare___')]"
+                    )
+                ]
+            )
+            
+            DATA['seats_available'].extend(
+                [
+                C.text.split()[0] 
+                for C in driver.find_elements(
+                    By.XPATH,"//p[contains(@class,'totalSeats___')]"
+                    )
+                ]
+            )
+            
+            # Go back to the previous page
+            driver.back()
 
-    except Exception as E:
+            time.sleep(3)
 
-        print(f"An error occurred: {E}")
+        except Exception as E:
 
-        driver.back()
+            print(f"An error occurred: {E}")
 
-        time.sleep(2)
+            driver.back()
 
-    return
+            time.sleep(2)
+
+        return
 
 
-def scrap(x):
+    def scrap(x):
 
-    """
-    Scrapes all bus routes for a given state and extracts details for each bus.
+        """
+        Scrapes all bus routes for a given state and extracts
+        details for each bus.
+        """
 
-    Parameters:
-    x (str): State name.
-
-    This function navigates through all available bus routes on the state page.
-    For each route, it clicks on government bus listings (if any) to extract
-    additional details and then calls the 'extraction' function to collect
-    bus information such as name, type, timings, duration, rating, price,
-    and seat availability.
-    """
-
-    # Get all route links on the current state page
-    RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
-
-    for i in range(len(RDETAILS)):
-
-        # Re-fetch route elements to avoid stale element reference
+        # Get all route links on the current state page
         RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
 
-        ROUTE_LINK = RDETAILS[i].get_attribute('href')
-        
-        ROUTE_TITLE = RDETAILS[i].get_attribute('title')
+        for i in range(len(RDETAILS)):
 
-        # Open the route page
-        driver.get(ROUTE_LINK)
+            # Re-fetch route elements to avoid stale element reference
+            RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
 
-        # Wait until bus listings are loaded
-        wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+            ROUTE_LINK = RDETAILS[i].get_attribute('href')
+            
+            ROUTE_TITLE = RDETAILS[i].get_attribute('title')
+
+            # Open the route page
+            driver.get(ROUTE_LINK)
+
+            # Wait until bus listings are loaded
+            wait.until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                )
             )
-        )
 
-        # Get government bus listings
-        GOVT_BUSES = driver.find_elements(
-            By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
-        )
-
-        for j in range(len(GOVT_BUSES)):
-
-            # Re-fetch to prevent stale element reference
+            # Get government bus listings
             GOVT_BUSES = driver.find_elements(
                 By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
             )
 
-            GOVT_BUSES[j].click()
+            for j in range(len(GOVT_BUSES)):
 
-            # Wait until the bus details are loaded
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                # Re-fetch to prevent stale element reference
+                GOVT_BUSES = driver.find_elements(
+                    By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
                 )
-            )
 
-            # Extract bus details for the clicked government bus
+                GOVT_BUSES[j].click()
+
+                # Wait until the bus details are loaded
+                wait.until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                    )
+                )
+
+                # Extract bus details for the clicked government bus
+                extraction(x, ROUTE_LINK, ROUTE_TITLE)
+
+                break #remove
+
+            # Extract details for remaining buses on the route page
             extraction(x, ROUTE_LINK, ROUTE_TITLE)
 
-        # Extract details for remaining buses on the route page
-        extraction(x, ROUTE_LINK, ROUTE_TITLE)
+            break #remove
 
-    return
+        return
 
-# Initialize Chrome WebDriver
-driver = webdriver.Chrome()
+    # Initialize Chrome WebDriver
+    driver = webdriver.Chrome()
 
-# Set up an explicit wait for elements to load (max 10 seconds)
-wait = WebDriverWait(driver, 10)
+    # Set up an explicit wait for elements to load (max 10 seconds)
+    wait = WebDriverWait(driver, 10)
 
-# Dictionary containing state names and their 
-# corresponding RedBus government bus URLs
-GOVT_LINKS = {
-    'Andhra Pradesh': 'https://www.redbus.in/online-booking/apsrtc',
-    'Kerala': 'https://www.redbus.in/online-booking/ksrtc-kerala',
-    'Telangana': 'https://www.redbus.in/online-booking/tsrtc',
-    'Goa': 'https://www.redbus.in/online-booking/ktcl',
-    'Rajasthan': 'https://www.redbus.in/online-booking/rsrtc',
-    'South Bengal': (
-        'https://www.redbus.in/online-booking/'
-        'south-bengal-state-transport-corporation-sbstc'
-    ),
-    'Himachal Pradesh': 'https://www.redbus.in/online-booking/hrtc',
-    'Assam': 'https://www.redbus.in/online-booking/astc',
-    'Uttar Pradesh': (
-        'https://www.redbus.in/online-booking/'
-        'uttar-pradesh-state-road-transport-corporation-upsrtc'
-    ),
-    'West Bengal': 'https://www.redbus.in/online-booking/wbtc-ctc'
-}
+    # Dictionary containing state names and their 
+    # corresponding RedBus government bus URLs
+    GOVT_LINKS = {
+        'Andhra Pradesh': 'https://www.redbus.in/online-booking/apsrtc',
+        'Kerala': 'https://www.redbus.in/online-booking/ksrtc-kerala',
+        'Telangana': 'https://www.redbus.in/online-booking/tsrtc',
+        'Goa': 'https://www.redbus.in/online-booking/ktcl',
+        'Rajasthan': 'https://www.redbus.in/online-booking/rsrtc',
+        'South Bengal': (
+            'https://www.redbus.in/online-booking/'
+            'south-bengal-state-transport-corporation-sbstc'
+        ),
+        'Himachal Pradesh': 'https://www.redbus.in/online-booking/hrtc',
+        'Assam': 'https://www.redbus.in/online-booking/astc',
+        'Uttar Pradesh': (
+            'https://www.redbus.in/online-booking/'
+            'uttar-pradesh-state-road-transport-corporation-upsrtc'
+        ),
+        'West Bengal': 'https://www.redbus.in/online-booking/wbtc-ctc'
+    }
 
-# Dictionary to store extracted bus data
-DATA = {
-            'state':[],
-            'route_name':[],
-            'route_link':[],
-            'busname':[],
-            'bustype':[],
-            'departing_time':[],
-            'duration':[],
-            'reaching_time':[],
-            'star_rating':[],
-            'price':[],
-            'seats_available':[]
-        }
+    # Dictionary to store extracted bus data
+    DATA = {
+                'state':[],
+                'route_name':[],
+                'route_link':[],
+                'busname':[],
+                'bustype':[],
+                'departing_time':[],
+                'duration':[],
+                'reaching_time':[],
+                'star_rating':[],
+                'price':[],
+                'seats_available':[]
+            }
 
-# Loop through each state and its corresponding RedBus URL
-for STATE,URL in GOVT_LINKS.items():
+    # Loop through each state and its corresponding RedBus URL
+    for STATE,URL in GOVT_LINKS.items():
 
-    # Navigate to the state's RedBus page
-    driver.get(URL)
+        # Navigate to the state's RedBus page
+        driver.get(URL)
 
-    # Wait until all route links are present on the page
-    wait.until(EC.presence_of_all_elements_located(
-        (By.CSS_SELECTOR, ".route_link")
-        )
-    )
-
-    try:
-
-        # Check if pagination tabs exist on the page
-        driver.find_element(
-            By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
+        # Wait until all route links are present on the page
+        wait.until(EC.presence_of_all_elements_located(
+            (By.CSS_SELECTOR, ".route_link")
+            )
         )
 
-        # Get all pagination elements
-        PANUM = driver.find_elements(
-            By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
-        )
+        try:
 
-        # Iterate through each pagination tab
-        for i in range(len(PANUM)):
+            # Check if pagination tabs exist on the page
+            driver.find_element(
+                By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
+            )
 
-            # Re-fetch pagination elements to avoid stale element reference
+            # Get all pagination elements
             PANUM = driver.find_elements(
                 By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
             )
 
-            # Click on the pagination tab using JavaScript to avoid element intercept errors
-            driver.execute_script("arguments[0].click();", PANUM[i])
+            # Iterate through each pagination tab
+            for i in range(len(PANUM)):
 
-            # Call scrap function to extract bus details for the current state
+                # Re-fetch pagination elements to avoid stale element reference
+                PANUM = driver.find_elements(
+                    By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
+                )
+
+                # Click on the pagination tab using JavaScript 
+                # to avoid element intercept errors
+                driver.execute_script("arguments[0].click();", PANUM[i])
+
+                # Call scrap function to extract bus details 
+                # for the current state
+                scrap(STATE)
+                break #remove
+
+        except:
+            
+            # If no pagination exists, directly scrap the page
             scrap(STATE)
 
-    except:
-        
-        # If no pagination exists, directly scrap the page
-        scrap(STATE)
+        # Go back to the main state page after scraping
+        driver.back()
 
-    # Go back to the main state page after scraping
-    driver.back()
+        break #remove
 
+    # Close the Selenium WebDriver after scraping all data
+    driver.quit()
 
-# Close the Selenium WebDriver after scraping all data
-driver.quit()
+    # Convert the collected bus data into a pandas DataFrame
+    df = pd.DataFrame(DATA)
 
-
-# Convert the collected bus data into a pandas DataFrame
-df = pd.DataFrame(DATA)
-
+    return df
 
 # Configure the Streamlit app page layout and title
 st.set_page_config(page_title="BusGrid", layout="wide")
-
 
 # Apply custom CSS styling for the app
 st.markdown("""
@@ -384,7 +391,8 @@ th {
 """, unsafe_allow_html=True)
 
 
-# Get query parameters from the URL (used for state and route selection)
+# Get query parameters from the URL 
+# (used for state and route selection)
 PARAMS = st.query_params
 
 
@@ -424,14 +432,91 @@ try:
 
     # Connect to the local MySQL database 'bus_DETAILS'  
     mydb = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="bus_details"
+        host="gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+        user="PRcdCBsrEmMi29p.root",
+        password="oIyHQktds3I0RxUf",
+        database=""
     )
+
+    # Get scraped bus data (cached to avoid re-scraping)
+    df = scrap_redbus_data()
 
     # Create a buffered cursor to execute SQL queries
     mycursor = mydb.cursor(buffered=True)
+
+    mycursor.execute("DROP DATABASE IF EXISTS Redbusdata")
+    
+    # Create a new MySQL database named Redbusdata
+    mycursor.execute("CREATE DATABASE Redbusdata")
+
+
+    # Connect to the new database using SQLAlchemy
+    engine = create_engine(
+        (
+            "mysql+mysqlconnector://PRcdCBsrEmMi29p.root:"
+            "oIyHQktds3I0RxUf@"
+            "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/"
+            "Redbusdata"
+        ),
+        connect_args={"ssl_disabled": False}
+    )
+
+    # Export the pandas DataFrame to the 'bus_routes' table 
+    # in chunks of 1000 rows
+    
+    df.to_sql(
+        name='bus_routes',
+        con=engine,
+        if_exists='replace',
+        index=True,
+        chunksize=1000,
+        index_label='id'
+    )
+
+    # Modify the table structure to add appropriate 
+    # data types and primary key
+    mycursor.execute(
+        """
+        USE Redbusdata;
+        """
+    )
+
+    mycursor.execute(
+        """
+        ALTER TABLE bus_routes ADD 
+        PRIMARY KEY (id)
+        """
+    )
+
+    mycursor.execute(
+        """
+        alter table bus_routes modify column departing_time time;
+        """
+    )
+
+    mycursor.execute(
+        """
+        alter table bus_routes modify column reaching_time time;
+        """
+    )
+
+    mycursor.execute(
+        """
+        alter table bus_routes modify column star_rating float;
+        """
+    )
+
+    mycursor.execute(
+        """
+        alter table bus_routes modify column price decimal(10,2);
+        """
+    )
+
+    mycursor.execute(
+        """
+        alter table bus_routes modify column seats_available int;
+        """
+    )
 
     # Case 1: User has selected both state and route
     if SELECTED_STATE and SELECTED_ROUTE:
@@ -443,7 +528,8 @@ try:
 
             st.rerun() # Refresh the app with updated query params
 
-        # Fetch the minimum and maximum price for selected state & route
+        # Fetch the minimum and maximum price for selected 
+        # state & route
         mycursor.execute("""
             SELECT MIN(price), MAX(price) FROM bus_routes
             WHERE state = %s AND route_name = %s
@@ -688,7 +774,7 @@ try:
 
                 st.success(
 
-                    f"🚌 {len(DETAILS)} buses found within the" 
+                    f"🚌 {len(DETAILS)} buses found within the " 
 
                     "selected price range."
 
