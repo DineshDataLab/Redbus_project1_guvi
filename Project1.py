@@ -36,16 +36,6 @@ def scrap_redbus_data():
         """
         Extracts bus details from a route page and 
         appends them to the DATA dictionary.
-
-        Parameters:
-        x (str): State name.
-        y (str): Route link.
-        z (str): Route name.
-
-        This function scrolls through the bus listings 
-        on the page, collects details such as bus name, type, timing,
-        duration, rating, price, and seat availability
-        and stores them in the global DATA dictionary.
         """
         def scroll():
 
@@ -64,13 +54,16 @@ def scrap_redbus_data():
                 )
 
                 driver.execute_script(
-                """
-                arguments[0].scrollIntoView({behavior:'smooth',block:'center'});
-                """,
-                BUSES[-3]
+                    """
+                    arguments[0].scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                    """,
+                    BUSES[-3],
                 )
 
-                time.sleep(5)
+                time.sleep(3)
 
                 try:
 
@@ -95,9 +88,10 @@ def scrap_redbus_data():
 
             time.sleep(2)
 
-            #scroll()
+            # Scroll through the bus listings to load all buses
+            scroll()
 
-            #time.sleep(2)
+            time.sleep(2)
 
             LE = driver.find_elements(
                 By.XPATH,"//div[contains(@class , 'travelsName___')]"
@@ -241,12 +235,9 @@ def scrap_redbus_data():
                 # Extract bus details for the clicked government bus
                 extraction(x, ROUTE_LINK, ROUTE_TITLE)
 
-                break #remove
 
             # Extract details for remaining buses on the route page
             extraction(x, ROUTE_LINK, ROUTE_TITLE)
-
-            break #remove
 
         return
 
@@ -331,7 +322,6 @@ def scrap_redbus_data():
                 # Call scrap function to extract bus details 
                 # for the current state
                 scrap(STATE)
-                break #remove
 
         except:
             
@@ -341,7 +331,6 @@ def scrap_redbus_data():
         # Go back to the main state page after scraping
         driver.back()
 
-        break #remove
 
     # Close the Selenium WebDriver after scraping all data
     driver.quit()
@@ -458,7 +447,8 @@ try:
             "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/"
             "Redbusdata"
         ),
-        connect_args={"ssl_disabled": False}
+        connect_args={"ssl_disabled": False},
+        pool_pre_ping=True
     )
 
     # Export the pandas DataFrame to the 'bus_routes' table 
