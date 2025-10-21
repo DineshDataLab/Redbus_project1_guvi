@@ -53,6 +53,10 @@ def scrap_redbus_data():
                     By.XPATH,"//div[contains(@class,'travelsName___')]"
                 )
 
+                if len(BUSES) < 3:
+
+                    break
+
                 driver.execute_script(
                     """
                     arguments[0].scrollIntoView({
@@ -80,18 +84,14 @@ def scrap_redbus_data():
 
                 B += 1
 
-                if B > 50:
+                if B > 10:
 
                     break
 
         try:
 
-            time.sleep(2)
-
             # Scroll through the bus listings to load all buses
-            scroll()
-
-            time.sleep(2)
+            # scroll()
 
             LE = driver.find_elements(
                 By.XPATH,"//div[contains(@class , 'travelsName___')]"
@@ -108,26 +108,50 @@ def scrap_redbus_data():
             DATA['route_name'].extend([z]*(LE))
 
             # Append dynamic data for each bus
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//div[contains(@class,'travelsName___')]")
+                )
+            )
             DATA['busname'].extend([C.text for C in driver.find_elements(
                 By.XPATH,"//div[contains(@class,'travelsName___')]"
                 )])
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'busType___')]")
+                )
+            )
             DATA['bustype'].extend([C.text for C in driver.find_elements(
                 By.XPATH,"//p[contains(@class,'busType___')]"
                 )])
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'boardingTime___')]")
+                )
+            )
             DATA['departing_time'].extend([C.text for C in driver.find_elements(
                 By.XPATH,"//p[contains(@class,'boardingTime___')]"
                 )])
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'duration___')]")
+                )
+            )
             DATA['duration'].extend([C.text for C in driver.find_elements(
                 By.XPATH,"//p[contains(@class,'duration___')]"
                 )])
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'droppingTime___')]")
+                )
+            )
             DATA['reaching_time'].extend([C.text for C in driver.find_elements(
                 By.XPATH,"//p[contains(@class,'droppingTime___')]"
                 )])
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//div[contains(@class,'timeFareBoWrap___')]")
+                )
+            )
             # Extract ratings
             MAINC = driver.find_elements(
                 By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
@@ -137,7 +161,7 @@ def scrap_redbus_data():
 
                 MAINC = driver.find_elements(
                     By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
-                    )
+                )
                 
                 try:
 
@@ -147,18 +171,26 @@ def scrap_redbus_data():
                     
                 except:
 
-                    DATA['star_rating'].append('No rating')
+                    DATA['star_rating'].append(0)
 
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'finalFare___')]")
+                )
+            )
             # Extract price and seats available
             DATA['price'].extend(
                 [
-                (C.text).strip('₹')
+                (C.text).replace('₹','').replace(',','')
                 for C in driver.find_elements(
                     By.XPATH,"//p[contains(@class,'finalFare___')]"
                     )
                 ]
             )
             
+            wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//p[contains(@class,'totalSeats___')]")
+                )
+            )
             DATA['seats_available'].extend(
                 [
                 C.text.split()[0] 
@@ -173,9 +205,9 @@ def scrap_redbus_data():
 
             time.sleep(3)
 
-        except Exception as E:
+        except Exception as e:
 
-            print(f"An error occurred: {E}")
+            print(f"{x}{y}{z}Error during extraction: {e}")
 
             driver.back()
 
@@ -196,48 +228,88 @@ def scrap_redbus_data():
 
         for i in range(len(RDETAILS)):
 
-            # Re-fetch route elements to avoid stale element reference
-            RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
+            try:
+                if MULTI_PAGE:
 
-            ROUTE_LINK = RDETAILS[i].get_attribute('href')
-            
-            ROUTE_TITLE = RDETAILS[i].get_attribute('title')
+                    PANUM = driver.find_elements(
+                            By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
+                            )
+                
 
-            # Open the route page
-            driver.get(ROUTE_LINK)
 
-            # Wait until bus listings are loaded
-            wait.until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
-                )
-            )
+                    driver.execute_script('arguments[0].click();', PANUM[PAGE])    
 
-            # Get government bus listings
-            GOVT_BUSES = driver.find_elements(
-                By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
-            )
+                # Re-fetch route elements to avoid stale element reference
+                RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
 
-            for j in range(len(GOVT_BUSES)):
+                ROUTE_LINK = RDETAILS[i].get_attribute('href')
+                
+                ROUTE_TITLE = RDETAILS[i].get_attribute('title')
 
-                # Re-fetch to prevent stale element reference
-                GOVT_BUSES = driver.find_elements(
-                    By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
-                )
+                # Open the route page
+                driver.get(ROUTE_LINK)
 
-                GOVT_BUSES[j].click()
+                time.sleep(3)
 
-                # Wait until the bus details are loaded
-                wait.until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                try:
+
+                    driver.find_element(By.CSS_SELECTOR,"//h4[contains(@class,'title___')]")
+                    continue
+
+                except:
+                    pass
+
+                try:
+
+                    # Wait until bus listings are loaded
+                    wait.until(EC.presence_of_all_elements_located(
+                            (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                        )
                     )
-                )
 
-                # Extract bus details for the clicked government bus
+                
+
+                    # Get government bus listings
+                    GOVT_BUSES = driver.find_elements(
+                        By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
+                    )
+
+                    for j in range(len(GOVT_BUSES)):
+
+                        # Re-fetch to prevent stale element reference
+                        GOVT_BUSES = driver.find_elements(
+                            By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
+                        )
+
+                        GOVT_BUSES[j].click()
+
+                        # Wait until the bus details are loaded
+                        wait.until(EC.presence_of_all_elements_located(
+                            (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                            )
+                        )
+
+                        # Extract bus details for the clicked government bus
+                        extraction(x, ROUTE_LINK, ROUTE_TITLE)
+
+                        
+                    
+                except Exception as e:
+                    print(f"Error extracting govt buses: {e}")
+                    driver.back()
+                        
+
+                    
+                
+
+                # Extract details for remaining buses on the route page
                 extraction(x, ROUTE_LINK, ROUTE_TITLE)
 
-
-            # Extract details for remaining buses on the route page
-            extraction(x, ROUTE_LINK, ROUTE_TITLE)
+            except Exception as e:
+                print(f"Error processing route {ROUTE_LINK}: {e}")
+                pass
+            
+            
 
         return
 
@@ -245,7 +317,7 @@ def scrap_redbus_data():
     driver = webdriver.Chrome()
 
     # Set up an explicit wait for elements to load (max 10 seconds)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
 
     # Dictionary containing state names and their 
     # corresponding RedBus government bus URLs
@@ -267,6 +339,7 @@ def scrap_redbus_data():
         ),
         'West Bengal': 'https://www.redbus.in/online-booking/wbtc-ctc'
     }
+
 
     # Dictionary to store extracted bus data
     DATA = {
@@ -319,12 +392,19 @@ def scrap_redbus_data():
                 # to avoid element intercept errors
                 driver.execute_script("arguments[0].click();", PANUM[i])
 
+                PAGE = i
+
+                MULTI_PAGE = True
                 # Call scrap function to extract bus details 
                 # for the current state
                 scrap(STATE)
 
+                          
+
         except:
             
+            MULTI_PAGE = False
+
             # If no pagination exists, directly scrap the page
             scrap(STATE)
 
@@ -332,11 +412,15 @@ def scrap_redbus_data():
         driver.back()
 
 
+        
+
     # Close the Selenium WebDriver after scraping all data
     driver.quit()
 
     # Convert the collected bus data into a pandas DataFrame
     df = pd.DataFrame(DATA)
+
+    df['star_rating'] = df['star_rating'].replace('New','3')
 
     return df
 
@@ -417,455 +501,467 @@ if not SELECTED_STATE and not SELECTED_ROUTE:
     </div>
     """, unsafe_allow_html=True)
 
-try:
-
-    # Connect to the local MySQL database 'bus_DETAILS'  
-    mydb = mysql.connector.connect(
-        host="gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-        user="PRcdCBsrEmMi29p.root",
-        password="oIyHQktds3I0RxUf",
-        database=""
-    )
-
-    # Get scraped bus data (cached to avoid re-scraping)
-    df = scrap_redbus_data()
-
-    # Create a buffered cursor to execute SQL queries
-    mycursor = mydb.cursor(buffered=True)
-
-    mycursor.execute("DROP DATABASE IF EXISTS Redbusdata")
-    
-    # Create a new MySQL database named Redbusdata
-    mycursor.execute("CREATE DATABASE Redbusdata")
-
-
-    # Connect to the new database using SQLAlchemy
-    engine = create_engine(
-        (
-            "mysql+mysqlconnector://PRcdCBsrEmMi29p.root:"
-            "oIyHQktds3I0RxUf@"
-            "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/"
-            "Redbusdata"
-        ),
-        connect_args={"ssl_disabled": False},
-        pool_pre_ping=True
-    )
-
-    # Export the pandas DataFrame to the 'bus_routes' table 
-    # in chunks of 1000 rows
-    
-    df.to_sql(
-        name='bus_routes',
-        con=engine,
-        if_exists='replace',
-        index=True,
-        chunksize=1000,
-        index_label='id'
-    )
-
-    # Modify the table structure to add appropriate 
-    # data types and primary key
-    mycursor.execute(
-        """
-        USE Redbusdata;
-        """
-    )
-
-    mycursor.execute(
-        """
-        ALTER TABLE bus_routes ADD 
-        PRIMARY KEY (id)
-        """
-    )
-
-    mycursor.execute(
-        """
-        alter table bus_routes modify column departing_time time;
-        """
-    )
-
-    mycursor.execute(
-        """
-        alter table bus_routes modify column reaching_time time;
-        """
-    )
-
-    mycursor.execute(
-        """
-        alter table bus_routes modify column star_rating float;
-        """
-    )
-
-    mycursor.execute(
-        """
-        alter table bus_routes modify column price decimal(10,2);
-        """
-    )
-
-    mycursor.execute(
-        """
-        alter table bus_routes modify column seats_available int;
-        """
-    )
-
-    # Case 1: User has selected both state and route
-    if SELECTED_STATE and SELECTED_ROUTE:
-
-         # Add a "Go back" button to remove route selection
-        if st.button("🔙 Go back"):
-
-            del st.query_params["route"]
-
-            st.rerun() # Refresh the app with updated query params
-
-        # Fetch the minimum and maximum price for selected 
-        # state & route
-        mycursor.execute("""
-            SELECT MIN(price), MAX(price) FROM bus_routes
-            WHERE state = %s AND route_name = %s
-        """, (SELECTED_STATE, SELECTED_ROUTE))
-
-        PRICE_DETAILS = mycursor.fetchone()
-
-        MIP, MAPR = list(PRICE_DETAILS) # Minimum and maximum prices
-
-        # Define filtering options for the bus search
-        FILTERING_OPTIONS = [
-            "❄️ AC","🪟 NON-AC","🛌 SLEEPER","💺 SEATER","🌟 LUXURY",
-            "⚡ ELECTRIC","🏛️ GOVERNMENT","🏢 PRIVATE","⭐ HIGHLY RATED",
-            "🌞 DAY TRAVEL","🌙 NIGHT TRAVEL"
-        ]
-
-        # Split the page into filter column and data display column
-        COL1, COL2 = st.columns([1, 4])
-
-        # Filter options UI
-        with COL1:
-
-            st.markdown("""
-                <h3 style="
-                    color:#E86D51;
-                ">
-                    Filter Options
-                </h3>
-            """, unsafe_allow_html=True)
-
-            FILV = st.pills(
-                "",
-                options=FILTERING_OPTIONS,
-                key="filter_pills",
-                selection_mode="multi",
-                default = []
-            )
-
-            # Price slider for filtering
-            SLV = st.slider(
-                "Price Range (₹)",
-                min_value=int(MIP),
-                max_value=int(MAPR),
-                value=int(MAPR),
-                step=10,
-                key="price_slider"
-            )
-
-        # Base SQL query to fetch bus details for 
-        # selected state & route within price range
-        QUERY1 = """
-            SELECT busname, bustype, departing_time, duration,
-                reaching_time, star_rating, price, seats_available
-            FROM bus_routes 
-            WHERE state = %s 
-                AND route_name = %s 
-                AND price <= %s
-        """
-
-        # Additional SQL filters based on selected options
-        if '❄️ AC' in FILV:# Filter for AC buses
-
-            SQUERY1 = """ and ( lower(bustype) like '%ac%' or 
-                                lower(bustype) like '%a/c%' or 
-                                lower(bustype) like '%a.c%') and
-                                lower(bustype) not like '%non%'
-                        """
-        
-        else:
-
-            SQUERY1 = ""
-
-        if '🪟 NON-AC' in FILV:# Filter for Non-AC buses
-
-            SQUERY2 = " and lower(bustype) like '%non%'"
-
-        else:
-            
-            SQUERY2 = ""
-
-        if '❄️ AC' in FILV and '🪟 NON-AC' in FILV:
-
-            SQUERY1,SQUERY2 = "",""
-
-        if '🛌 SLEEPER' in FILV:# Filter for Sleeper buses
-
-            SQUERY3 = " and upper(bustype) like '%SLEEP%'"
-
-        else:
-
-            SQUERY3 = ""
-
-        if '💺 SEATER' in FILV:# Filter for Seater buses
-
-            SQUERY4 = " and upper(bustype) like '%SEAT%'"
-
-        else:
-
-            SQUERY4 = ""
-
-        if '🌟 LUXURY' in FILV:# Filter for Luxury buses
-
-            SQUERY5 = " and upper(bustype) like '%LUXURY%'"
-
-        else:
-
-            SQUERY5 = ""
-
-        if '⚡ ELECTRIC' in FILV:# Filter for Electric buses
-
-            SQUERY6 = " and upper(bustype) like '%ELECTRIC%'"
-
-        else:
-
-            SQUERY6 = ""
-
-        if '🏛️ GOVERNMENT' in FILV:# Filter for Government buses
-
-            SQUERY7 = """ and (upper(busname) like '%APSRTC%' or
-                            upper(busname) like '%KSRTC%' or
-                            upper(busname) like '%TGSRTC%' or
-                            upper(busname) like '%KTCL%' or
-                            upper(busname) like '%RSRTC%' or
-                            upper(busname) like '%SBSTC%' or
-                            upper(busname) like '%HRTC%' or
-                            upper(busname) like '%ASTC%' or
-                            upper(busname) like '%UPSRTC%' or
-                            upper(busname) like '%WBTC%')
-                        """
-            
-        else:
-
-            SQUERY7 = ""
-
-        if '🏢 PRIVATE' in FILV:# Filter for Private buses
-
-            SQUERY8 = """ and (upper(busname) not like '%APSRTC%' and
-                                upper(busname) not like '%KSRTC%' and
-                                upper(busname) not like '%TGSRTC%' and
-                                upper(busname) not like '%KTCL%' and
-                                upper(busname) not like '%RSRTC%' and
-                                upper(busname) not like '%SBSTC%' and
-                                upper(busname) not like '%HRTC%' and
-                                upper(busname) not like '%ASTC%' and
-                                upper(busname) not like '%UPSRTC%' and
-                                upper(busname) not like '%WBTC%')
-                        """
-            
-        else:
-
-            SQUERY8 = ""
-
-        if '🏛️ GOVERNMENT' in FILV and '🏢 PRIVATE' in FILV:
-
-            SQUERY7, SQUERY8 = "", ""
-
-        if '⭐ HIGHLY RATED' in FILV:# Filter for Highly rated buses
-
-            SQUERY9 = " and star_rating >= 4.0"
-
-        else:
-
-            SQUERY9 = ""
-
-        if '🌞 DAY TRAVEL' in FILV:# Filter for Day travel buses
-
-            SQUERY10 = "and departing_time between '06:00:01' and '18:00:00'"
-
-        else:
-
-            SQUERY10 = ""
-
-        if '🌙 NIGHT TRAVEL' in FILV:# Filter for Night travel buses
-
-            SQUERY11 = "and departing_time between '18:00:01' and '06:00:00'"
-
-        else:
-
-            SQUERY11 = ""
-
-        # Combine all query parts to form the final SQL query
-        final_query = QUERY1 + SQUERY1 + SQUERY2 + SQUERY3 + SQUERY4
-
-        final_query+= SQUERY5 + SQUERY6 + SQUERY7 + SQUERY8 + SQUERY9
-
-        final_query+=SQUERY10 + SQUERY11 
-
-        # Execute query and fetch results
-        mycursor.execute(final_query, (SELECTED_STATE, SELECTED_ROUTE, SLV))
-
-        RAW_DATA = mycursor.fetchall()
-
-        # Convert query results into a DataFrame
-        DETAILS = pd.DataFrame(RAW_DATA, columns=[
-            "BUS NAME", "BUS TYPE", "DEPARTING TIME", "DURATION",
-            "REACHING TIME", "STAR RATING", "PRICE (₹)", "SEATS AVAILABLE"])
-
-        # Helper function to convert time to AM/PM format
-        def format_timedelta_to_ampm(td):
-
-            TOTAL_SECONDS = int(td.total_seconds())
-
-            HOURS = TOTAL_SECONDS // 3600
-
-            MINUTES = (TOTAL_SECONDS % 3600) // 60
-
-            PERIOD = "AM" if HOURS < 12 else "PM"
-
-            HOURS = HOURS % 12 or 12
-
-            return f"{HOURS}:{MINUTES:02d} {PERIOD}"
-        
-        # Apply formatting to relevant columns
-        DETAILS["DEPARTING TIME"] = DETAILS["DEPARTING TIME"].apply(
-            format_timedelta_to_ampm
+# try:
+
+# Connect to the local MySQL database 'bus_DETAILS'  
+mydb = mysql.connector.connect(
+    host="gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    user="PRcdCBsrEmMi29p.root",
+    password="oIyHQktds3I0RxUf",
+    database=""
+)
+
+# Get scraped bus data (cached to avoid re-scraping)
+df = scrap_redbus_data()
+
+# Create a buffered cursor to execute SQL queries
+mycursor = mydb.cursor(buffered=True)
+
+mycursor.execute("DROP DATABASE IF EXISTS Redbusdata")
+
+time.sleep(2)
+# Create a new MySQL database named Redbusdata
+mycursor.execute("CREATE DATABASE Redbusdata")
+
+
+# Connect to the new database using SQLAlchemy
+engine = create_engine(
+    (
+        "mysql+mysqlconnector://PRcdCBsrEmMi29p.root:"
+        "oIyHQktds3I0RxUf@"
+        "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/"
+        "Redbusdata"
+    ),
+    connect_args={"ssl_disabled": False},
+    pool_pre_ping=True,
+    pool_recycle=600,
+    pool_size=5,
+    max_overflow=10,  
+    pool_timeout=30
+
+)
+
+# Export the pandas DataFrame to the 'bus_routes' table 
+# in chunks of 300 rows
+
+
+for attempt in range(3):
+    try:
+        df.to_sql(
+            name='bus_routes',
+            con=engine,
+            if_exists='replace',
+            index=True,
+            chunksize=300,
+            index_label='id'
         )
+        break  # Exit the loop if successful
+    except:
+        time.sleep(5)  # Wait before retrying
 
-        DETAILS["REACHING TIME"] = DETAILS["REACHING TIME"].apply(
-            format_timedelta_to_ampm
-        )
+# Modify the table structure to add appropriate 
+# data types and primary key
+mycursor.execute(
+    """
+    USE Redbusdata;
+    """
+)
 
-        DETAILS["STAR RATING"] = DETAILS["STAR RATING"].apply(
-            lambda x: f"{x:.1f}"
-        )
+mycursor.execute(
+    """
+    ALTER TABLE bus_routes ADD 
+    PRIMARY KEY (id)
+    """
+)
 
-        DETAILS["PRICE (₹)"] = DETAILS["PRICE (₹)"].apply(
-            lambda x: f"{x:.2f}"
-        )
+mycursor.execute(
+    """
+    alter table bus_routes modify column departing_time time;
+    """
+)
 
-        DETAILS["SEATS AVAILABLE"] = DETAILS["SEATS AVAILABLE"].apply(
-            lambda x: f"{x:.0f}"
-        )
+mycursor.execute(
+    """
+    alter table bus_routes modify column reaching_time time;
+    """
+)
 
-        # Display bus details in Streamlit
-        with COL2:
+mycursor.execute(
+    """
+    alter table bus_routes modify column star_rating float;
+    """
+)
 
-            if DETAILS.empty:
+mycursor.execute(
+    """
+    alter table bus_routes modify column price decimal(10,2);
+    """
+)
 
-                st.warning(" 😔 No buses found. Try changing the filters.")
+mycursor.execute(
+    """
+    alter table bus_routes modify column seats_available int;
+    """
+)
 
-            else:
+# Case 1: User has selected both state and route
+if SELECTED_STATE and SELECTED_ROUTE:
 
-                st.success(
+        # Add a "Go back" button to remove route selection
+    if st.button("🔙 Go back"):
 
-                    f"🚌 {len(DETAILS)} buses found within the " 
+        del st.query_params["route"]
 
-                    "selected price range."
+        st.rerun() # Refresh the app with updated query params
 
-                )
+    # Fetch the minimum and maximum price for selected 
+    # state & route
+    mycursor.execute("""
+        SELECT MIN(price), MAX(price) FROM bus_routes
+        WHERE state = %s AND route_name = %s
+    """, (SELECTED_STATE, SELECTED_ROUTE))
 
-                st.dataframe(
-                    DETAILS,
-                    use_container_width=True,
-                    hide_index=True
-                )
+    PRICE_DETAILS = mycursor.fetchone()
 
-    # Case 2: User has selected only state
-    elif SELECTED_STATE:
+    MIP, MAPR = list(PRICE_DETAILS) # Minimum and maximum prices
 
-        if st.button("🔙 Go back"):
+    # Define filtering options for the bus search
+    FILTERING_OPTIONS = [
+        "❄️ AC","🪟 NON-AC","🛌 SLEEPER","💺 SEATER","🌟 LUXURY",
+        "⚡ ELECTRIC","🏛️ GOVERNMENT","🏢 PRIVATE","⭐ HIGHLY RATED",
+        "🌞 DAY TRAVEL","🌙 NIGHT TRAVEL"
+    ]
 
-            st.query_params.clear()
-            
-            st.rerun()
+    # Split the page into filter column and data display column
+    COL1, COL2 = st.columns([1, 4])
 
-        st.markdown(
-            f"""
-                <h3 style='color:#444;margin-top:10px;'>🗺️ Bus routes for
-                    <span style='color:#ff4b4b;'>{SELECTED_STATE}
-                    </span>
-                </h3>
-            """, unsafe_allow_html=True
-        )
+    # Filter options UI
+    with COL1:
 
-        # Fetch all available routes for the selected state
-        mycursor.execute(
-            """
-            SELECT DISTINCT route_name FROM bus_routes
-            WHERE state = %s
-            """, (SELECTED_STATE,)
-        )
-
-        ROUTES = mycursor.fetchall()
-
-        # Display each route as a button
-        for i, (route,) in enumerate(ROUTES):
-
-            if i % 3 == 0:
-
-                COLS = st.columns(3)
-                
-            with COLS[i % 3]:
-
-                if st.button(route):
-
-                    st.query_params["state"] = SELECTED_STATE
-
-                    st.query_params["route"] = route
-
-                    st.rerun()
-
-    # Case 3: User has not selected anything
-    else:
-
-        st.markdown(
-            """
-            <div style='
-                text-align:center;
-                margin:30px 0 10px 0;
-            '>
-                <h3 style='
-                    color:#444;
-                '>
-                🚏 Please choose a state to view available bus routes
-                </h3>
-            </div>
+        st.markdown("""
+            <h3 style="
+                color:#E86D51;
+            ">
+                Filter Options
+            </h3>
         """, unsafe_allow_html=True)
 
-        # Display all states as buttons
-        mycursor.execute("""
-            SELECT DISTINCT state FROM bus_routes
-            ORDER BY state
-        """)
+        FILV = st.pills(
+            "",
+            options=FILTERING_OPTIONS,
+            key="filter_pills",
+            selection_mode="multi",
+            default = []
+        )
 
-        STATES = mycursor.fetchall()
+        # Price slider for filtering
+        SLV = st.slider(
+            "Price Range (₹)",
+            min_value=int(MIP),
+            max_value=int(MAPR),
+            value=int(MAPR),
+            step=10,
+            key="price_slider"
+        )
 
-        for i, (STATE,) in enumerate(STATES):
+    # Base SQL query to fetch bus details for 
+    # selected state & route within price range
+    QUERY1 = """
+        SELECT busname, bustype, departing_time, duration,
+            reaching_time, star_rating, price, seats_available
+        FROM bus_routes 
+        WHERE state = %s 
+            AND route_name = %s 
+            AND price <= %s
+    """
 
-            if i % 4 == 0:
+    # Additional SQL filters based on selected options
+    if '❄️ AC' in FILV:# Filter for AC buses
 
-                COLS = st.columns(4)
+        SQUERY1 = """ and ( lower(bustype) like '%ac%' or 
+                            lower(bustype) like '%a/c%' or 
+                            lower(bustype) like '%a.c%') and
+                            lower(bustype) not like '%non%'
+                    """
+    
+    else:
 
-            with COLS[i % 4]:
+        SQUERY1 = ""
 
-                if st.button(STATE):
+    if '🪟 NON-AC' in FILV:# Filter for Non-AC buses
 
-                    st.query_params["state"] = STATE
+        SQUERY2 = " and lower(bustype) like '%non%'"
 
-                    st.rerun()
+    else:
+        
+        SQUERY2 = ""
 
-    # Close database connection
-    mycursor.close()
+    if '❄️ AC' in FILV and '🪟 NON-AC' in FILV:
 
-    mydb.close()
+        SQUERY1,SQUERY2 = "",""
 
-# Handle database connection errors
-except mysql.connector.Error as err:
+    if '🛌 SLEEPER' in FILV:# Filter for Sleeper buses
 
-    st.error(f"Database error: {err}")
+        SQUERY3 = " and upper(bustype) like '%SLEEP%'"
+
+    else:
+
+        SQUERY3 = ""
+
+    if '💺 SEATER' in FILV:# Filter for Seater buses
+
+        SQUERY4 = " and upper(bustype) like '%SEAT%'"
+
+    else:
+
+        SQUERY4 = ""
+
+    if '🌟 LUXURY' in FILV:# Filter for Luxury buses
+
+        SQUERY5 = " and upper(bustype) like '%LUXURY%'"
+
+    else:
+
+        SQUERY5 = ""
+
+    if '⚡ ELECTRIC' in FILV:# Filter for Electric buses
+
+        SQUERY6 = " and upper(bustype) like '%ELECTRIC%'"
+
+    else:
+
+        SQUERY6 = ""
+
+    if '🏛️ GOVERNMENT' in FILV:# Filter for Government buses
+
+        SQUERY7 = """ and (upper(busname) like '%APSRTC%' or
+                        upper(busname) like '%KSRTC%' or
+                        upper(busname) like '%TGSRTC%' or
+                        upper(busname) like '%KTCL%' or
+                        upper(busname) like '%RSRTC%' or
+                        upper(busname) like '%SBSTC%' or
+                        upper(busname) like '%HRTC%' or
+                        upper(busname) like '%ASTC%' or
+                        upper(busname) like '%UPSRTC%' or
+                        upper(busname) like '%WBTC%')
+                    """
+        
+    else:
+
+        SQUERY7 = ""
+
+    if '🏢 PRIVATE' in FILV:# Filter for Private buses
+
+        SQUERY8 = """ and (upper(busname) not like '%APSRTC%' and
+                            upper(busname) not like '%KSRTC%' and
+                            upper(busname) not like '%TGSRTC%' and
+                            upper(busname) not like '%KTCL%' and
+                            upper(busname) not like '%RSRTC%' and
+                            upper(busname) not like '%SBSTC%' and
+                            upper(busname) not like '%HRTC%' and
+                            upper(busname) not like '%ASTC%' and
+                            upper(busname) not like '%UPSRTC%' and
+                            upper(busname) not like '%WBTC%')
+                    """
+        
+    else:
+
+        SQUERY8 = ""
+
+    if '🏛️ GOVERNMENT' in FILV and '🏢 PRIVATE' in FILV:
+
+        SQUERY7, SQUERY8 = "", ""
+
+    if '⭐ HIGHLY RATED' in FILV:# Filter for Highly rated buses
+
+        SQUERY9 = " and star_rating >= 4.0"
+
+    else:
+
+        SQUERY9 = ""
+
+    if '🌞 DAY TRAVEL' in FILV:# Filter for Day travel buses
+
+        SQUERY10 = "and departing_time between '06:00:01' and '18:00:00'"
+
+    else:
+
+        SQUERY10 = ""
+
+    if '🌙 NIGHT TRAVEL' in FILV:# Filter for Night travel buses
+
+        SQUERY11 = "and (departing_time >= '18:00:01' or departing_time <= '06:00:00')"
+
+    else:
+
+        SQUERY11 = ""
+
+    # Combine all query parts to form the final SQL query
+    final_query = QUERY1 + SQUERY1 + SQUERY2 + SQUERY3 + SQUERY4
+
+    final_query+= SQUERY5 + SQUERY6 + SQUERY7 + SQUERY8 + SQUERY9
+
+    final_query+=SQUERY10 + SQUERY11 
+
+    # Execute query and fetch results
+    mycursor.execute(final_query, (SELECTED_STATE, SELECTED_ROUTE, SLV))
+
+    RAW_DATA = mycursor.fetchall()
+
+    # Convert query results into a DataFrame
+    DETAILS = pd.DataFrame(RAW_DATA, columns=[
+        "BUS NAME", "BUS TYPE", "DEPARTING TIME", "DURATION",
+        "REACHING TIME", "STAR RATING", "PRICE (₹)", "SEATS AVAILABLE"])
+
+    # Helper function to convert time to AM/PM format
+    def format_timedelta_to_ampm(td):
+
+        TOTAL_SECONDS = int(td.total_seconds())
+
+        HOURS = TOTAL_SECONDS // 3600
+
+        MINUTES = (TOTAL_SECONDS % 3600) // 60
+
+        PERIOD = "AM" if HOURS < 12 else "PM"
+
+        HOURS = HOURS % 12 or 12
+
+        return f"{HOURS}:{MINUTES:02d} {PERIOD}"
+    
+    # Apply formatting to relevant columns
+    DETAILS["DEPARTING TIME"] = DETAILS["DEPARTING TIME"].apply(
+        format_timedelta_to_ampm
+    )
+
+    DETAILS["REACHING TIME"] = DETAILS["REACHING TIME"].apply(
+        format_timedelta_to_ampm
+    )
+
+    DETAILS["STAR RATING"] = DETAILS["STAR RATING"].apply(
+        lambda x: f"{x:.1f}"
+    )
+
+    DETAILS["PRICE (₹)"] = DETAILS["PRICE (₹)"].apply(
+        lambda x: f"{x:.2f}"
+    )
+
+    DETAILS["SEATS AVAILABLE"] = DETAILS["SEATS AVAILABLE"].apply(
+        lambda x: f"{x:.0f}"
+    )
+
+    # Display bus details in Streamlit
+    with COL2:
+
+        if DETAILS.empty:
+
+            st.warning(" 😔 No buses found. Try changing the filters.")
+
+        else:
+
+            st.success(
+
+                f"🚌 {len(DETAILS)} buses found within the " 
+
+                "selected price range."
+
+            )
+
+            st.dataframe(
+                DETAILS,
+                use_container_width=True,
+                hide_index=True
+            )
+
+# Case 2: User has selected only state
+elif SELECTED_STATE:
+
+    if st.button("🔙 Go back"):
+
+        st.query_params.clear()
+        
+        st.rerun()
+
+    st.markdown(
+        f"""
+            <h3 style='color:#444;margin-top:10px;'>🗺️ Bus routes for
+                <span style='color:#ff4b4b;'>{SELECTED_STATE}
+                </span>
+            </h3>
+        """, unsafe_allow_html=True
+    )
+
+    # Fetch all available routes for the selected state
+    mycursor.execute(
+        """
+        SELECT DISTINCT route_name FROM bus_routes
+        WHERE state = %s
+        """, (SELECTED_STATE,)
+    )
+
+    ROUTES = mycursor.fetchall()
+
+    # Display each route as a button
+    for i, (route,) in enumerate(ROUTES):
+
+        if i % 3 == 0:
+
+            COLS = st.columns(3)
+            
+        with COLS[i % 3]:
+
+            if st.button(route):
+
+                st.query_params["state"] = SELECTED_STATE
+
+                st.query_params["route"] = route
+
+                st.rerun()
+
+# Case 3: User has not selected anything
+else:
+
+    st.markdown(
+        """
+        <div style='
+            text-align:center;
+            margin:30px 0 10px 0;
+        '>
+            <h3 style='
+                color:#444;
+            '>
+            🚏 Please choose a state to view available bus routes
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Display all states as buttons
+    mycursor.execute("""
+        SELECT DISTINCT state FROM bus_routes
+        ORDER BY state
+    """)
+
+    STATES = mycursor.fetchall()
+
+    for i, (STATE,) in enumerate(STATES):
+
+        if i % 4 == 0:
+
+            COLS = st.columns(4)
+
+        with COLS[i % 4]:
+
+            if st.button(STATE):
+
+                st.query_params["state"] = STATE
+
+                st.rerun()
+
+# Close database connection
+mycursor.close()
+
+mydb.close()
+
+# # Handle database connection errors
+# except Exception as err:#mysql.connector.Error as err:
+
+#     st.error(f"Database error: {err}")
