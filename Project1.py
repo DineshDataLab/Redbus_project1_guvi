@@ -496,8 +496,6 @@ if not SELECTED_STATE and not SELECTED_ROUTE:
     </div>
     """, unsafe_allow_html=True)
 
-# try:
-
 # Connect to the local MySQL database 'bus_DETAILS'  
 mydb = mysql.connector.connect(
     host="gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
