@@ -2,7 +2,7 @@
 Redbus Data Scraping with Selenium & Dynamic Filtering using Streamlit
 
 This module scrapes bus route data from RedBus for various state 
-transport corporations in India using Selenium, stores the data in a
+transport corporations in India using Selenium, stores the data in a  
 MySQL database, and displays it in an interactive Streamlit web app 
 with filtering options.
 
@@ -16,12 +16,19 @@ Modules used:
 import time
 
 import pandas as pd
+
 from selenium import webdriver
+
 from selenium.webdriver.common.by import By
+
 from selenium.webdriver.support.ui import WebDriverWait
+
 from selenium.webdriver.support import expected_conditions as EC
+
 import streamlit as st
+
 import mysql.connector
+
 from sqlalchemy import create_engine
 
 # Cache the scraped data to avoid re-scraping on every app reload
@@ -88,130 +95,130 @@ def scrap_redbus_data():
 
                     break
 
-        try:
+        
 
-            # Scroll through the bus listings to load all buses
-            # scroll()
+        # Scroll through the bus listings to load all buses
+        scroll()
 
-            LE = driver.find_elements(
-                By.XPATH,"//div[contains(@class , 'travelsName___')]"
+        LE = driver.find_elements(
+            By.XPATH,"//div[contains(@class , 'travelsName___')]"
+        )
+
+        # Get the total number of buses on the page
+        LE = len(LE)
+
+        # Append static data for each bus
+        DATA['state'].extend([x]*(LE))
+
+        DATA['route_link'].extend([y]*(LE))
+
+        DATA['route_name'].extend([z]*(LE))
+
+        # Append dynamic data for each bus
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//div[contains(@class,'travelsName___')]")
+            )
+        )
+
+        DATA['busname'].extend([C.text for C in driver.find_elements(
+            By.XPATH,"//div[contains(@class,'travelsName___')]"
+            )])
+
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'busType___')]")
+            )
+        )
+
+        DATA['bustype'].extend([C.text for C in driver.find_elements(
+            By.XPATH,"//p[contains(@class,'busType___')]"
+            )])
+
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'boardingTime___')]")
+            )
+        )
+
+        DATA['departing_time'].extend([C.text for C in driver.find_elements(
+            By.XPATH,"//p[contains(@class,'boardingTime___')]"
+            )])
+
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'duration___')]")
+            )
+        )
+
+        DATA['duration'].extend([C.text for C in driver.find_elements(
+            By.XPATH,"//p[contains(@class,'duration___')]"
+            )])
+
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'droppingTime___')]")
+            )
+        )
+
+        DATA['reaching_time'].extend([C.text for C in driver.find_elements(
+            By.XPATH,"//p[contains(@class,'droppingTime___')]"
+            )])
+
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//div[contains(@class,'timeFareBoWrap___')]")
+            )
+        )
+
+        # Extract ratings
+        MAINC = driver.find_elements(
+            By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
             )
 
-            # Get the total number of buses on the page
-            LE = len(LE)
+        for L in MAINC:
 
-            # Append static data for each bus
-            DATA['state'].extend([x]*(LE))
-
-            DATA['route_link'].extend([y]*(LE))
-
-            DATA['route_name'].extend([z]*(LE))
-
-            # Append dynamic data for each bus
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//div[contains(@class,'travelsName___')]")
-                )
-            )
-            DATA['busname'].extend([C.text for C in driver.find_elements(
-                By.XPATH,"//div[contains(@class,'travelsName___')]"
-                )])
-
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'busType___')]")
-                )
-            )
-            DATA['bustype'].extend([C.text for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'busType___')]"
-                )])
-
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'boardingTime___')]")
-                )
-            )
-            DATA['departing_time'].extend([C.text for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'boardingTime___')]"
-                )])
-
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'duration___')]")
-                )
-            )
-            DATA['duration'].extend([C.text for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'duration___')]"
-                )])
-
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'droppingTime___')]")
-                )
-            )
-            DATA['reaching_time'].extend([C.text for C in driver.find_elements(
-                By.XPATH,"//p[contains(@class,'droppingTime___')]"
-                )])
-
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//div[contains(@class,'timeFareBoWrap___')]")
-                )
-            )
-            # Extract ratings
             MAINC = driver.find_elements(
                 By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
-                )
+            )
+            
+            try:
 
-            for L in MAINC:
-
-                MAINC = driver.find_elements(
-                    By.XPATH,"//div[contains(@class,'timeFareBoWrap___')]"
-                )
+                DATA['star_rating'].append(L.find_element(
+                    By.XPATH, ".//div[contains(@class,'rating___')]"
+                    ).text)
                 
-                try:
+            except:
 
-                    DATA['star_rating'].append(L.find_element(
-                        By.XPATH, ".//div[contains(@class,'rating___')]"
-                        ).text)
-                    
-                except:
+                DATA['star_rating'].append(0)
 
-                    DATA['star_rating'].append(0)
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'finalFare___')]")
+            )
+        )
 
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'finalFare___')]")
+        # Extract price and seats available
+        DATA['price'].extend(
+            [
+            (C.text).replace('₹','').replace(',','')
+            for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'finalFare___')]"
                 )
+            ]
+        )
+        
+        wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, "//p[contains(@class,'totalSeats___')]")
             )
-            # Extract price and seats available
-            DATA['price'].extend(
-                [
-                (C.text).replace('₹','').replace(',','')
-                for C in driver.find_elements(
-                    By.XPATH,"//p[contains(@class,'finalFare___')]"
-                    )
-                ]
-            )
-            
-            wait.until(EC.presence_of_all_elements_located(
-                (By.XPATH, "//p[contains(@class,'totalSeats___')]")
+        )
+
+        DATA['seats_available'].extend(
+            [
+            C.text.split()[0] 
+            for C in driver.find_elements(
+                By.XPATH,"//p[contains(@class,'totalSeats___')]"
                 )
-            )
-            DATA['seats_available'].extend(
-                [
-                C.text.split()[0] 
-                for C in driver.find_elements(
-                    By.XPATH,"//p[contains(@class,'totalSeats___')]"
-                    )
-                ]
-            )
-            
-            # Go back to the previous page
-            driver.back()
+            ]
+        )
+        
+        # Go back to the previous page
+        driver.back()
 
-            time.sleep(3)
-
-        except Exception as e:
-
-            print(f"{x}{y}{z}Error during extraction: {e}")
-
-            driver.back()
-
-            time.sleep(2)
+        time.sleep(3)
 
         return
 
@@ -228,89 +235,79 @@ def scrap_redbus_data():
 
         for i in range(len(RDETAILS)):
 
-            try:
-                if MULTI_PAGE:
+            
+            if MULTI_PAGE:
 
-                    PANUM = driver.find_elements(
-                            By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
-                            )
-                
-
-
-                    driver.execute_script('arguments[0].click();', PANUM[PAGE])    
-
-                # Re-fetch route elements to avoid stale element reference
-                RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
-
-                ROUTE_LINK = RDETAILS[i].get_attribute('href')
-                
-                ROUTE_TITLE = RDETAILS[i].get_attribute('title')
-
-                # Open the route page
-                driver.get(ROUTE_LINK)
-
-                time.sleep(3)
-
-                try:
-
-                    driver.find_element(By.CSS_SELECTOR,"//h4[contains(@class,'title___')]")
-                    continue
-
-                except:
-                    pass
-
-                try:
-
-                    # Wait until bus listings are loaded
-                    wait.until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
+                PANUM = driver.find_elements(
+                        By.XPATH, "//div[contains(@class, 'DC_117_pageTabs')]"
                         )
+            
+
+
+                driver.execute_script('arguments[0].click();', PANUM[PAGE])    
+
+            # Re-fetch route elements to avoid stale element reference
+            RDETAILS=driver.find_elements(By.CSS_SELECTOR,"a[class='route']")
+
+            ROUTE_LINK = RDETAILS[i].get_attribute('href')
+            
+            ROUTE_TITLE = RDETAILS[i].get_attribute('title')
+
+            # Open the route page
+            driver.get(ROUTE_LINK)
+
+            time.sleep(3)
+
+            try:
+
+                driver.find_element(By.CSS_SELECTOR,"//h4[contains(@class,'title___')]")
+                continue
+
+            except:
+                pass
+
+            
+            try:
+
+                # Wait until bus listings are loaded
+                wait.until(EC.presence_of_all_elements_located(
+                        (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
                     )
+                )
 
-                
+        
+            
+                # Get government bus listings
+                GOVT_BUSES = driver.find_elements(
+                    By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
+                )
 
-                    # Get government bus listings
+                for j in range(len(GOVT_BUSES)):
+
+                    # Re-fetch to prevent stale element reference
                     GOVT_BUSES = driver.find_elements(
                         By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
                     )
 
-                    for j in range(len(GOVT_BUSES)):
+                    GOVT_BUSES[j].click()
 
-                        # Re-fetch to prevent stale element reference
-                        GOVT_BUSES = driver.find_elements(
-                            By.XPATH,"//div[contains(@class,'rtcInfoWrap___')]"
+                    # Wait until the bus details are loaded
+                    wait.until(EC.presence_of_all_elements_located(
+                        (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
                         )
+                    )
 
-                        GOVT_BUSES[j].click()
-
-                        # Wait until the bus details are loaded
-                        wait.until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//li[contains(@class, 'tupleWrapper')]")
-                            )
-                        )
-
-                        # Extract bus details for the clicked government bus
-                        extraction(x, ROUTE_LINK, ROUTE_TITLE)
-
-                        
-                    
-                except Exception as e:
-                    print(f"Error extracting govt buses: {e}")
-                    driver.back()
-                        
-
-                    
-                
+                    # Extract bus details for the clicked government bus
+                    extraction(x, ROUTE_LINK, ROUTE_TITLE)
 
                 # Extract details for remaining buses on the route page
-                extraction(x, ROUTE_LINK, ROUTE_TITLE)
+                extraction(x, ROUTE_LINK, ROUTE_TITLE)          
 
-            except Exception as e:
-                print(f"Error processing route {ROUTE_LINK}: {e}")
-                pass
-            
-            
+            except:
 
+                driver.back()
+                
+                time.sleep(3)
         return
 
     # Initialize Chrome WebDriver
@@ -410,8 +407,6 @@ def scrap_redbus_data():
 
         # Go back to the main state page after scraping
         driver.back()
-
-
         
 
     # Close the Selenium WebDriver after scraping all data
@@ -895,6 +890,7 @@ elif SELECTED_STATE:
         """
         SELECT DISTINCT route_name FROM bus_routes
         WHERE state = %s
+        ORDER BY route_name ASC
         """, (SELECTED_STATE,)
     )
 
@@ -961,7 +957,3 @@ mycursor.close()
 
 mydb.close()
 
-# # Handle database connection errors
-# except Exception as err:#mysql.connector.Error as err:
-
-#     st.error(f"Database error: {err}")
